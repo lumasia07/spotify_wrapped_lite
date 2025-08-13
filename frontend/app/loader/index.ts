@@ -1,6 +1,5 @@
 // Export all loader utilities and components
 export { default as SpotifyLoader } from '../components/SpotifyLoader';
-export { default as LoaderExample } from '../components/LoaderExample';
 export {
   useLoader,
   simulateLoading,

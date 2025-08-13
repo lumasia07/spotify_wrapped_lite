@@ -4,21 +4,19 @@ import { useEffect, useState } from 'react';
 import { SpotifyLoader, useLoader } from './loader';
 import { 
   HeroSection, 
-  FeaturesSection,
+  FeaturesSection, 
   StorySection, 
   StatsSection, 
   FooterSection 
 } from './homepage_components';
 
 export default function Home() {
-  const loader = useLoader(true); // Start with loading true
+  const loader = useLoader(true);
   const [componentsLoaded, setComponentsLoaded] = useState(false);
 
   useEffect(() => {
-    // Simulate loading time for components - extended for better UX
     const loadComponents = async () => {
-      // Extended loading time (4-5 seconds) for more immersive experience
-      await new Promise(resolve => setTimeout(resolve, 4500));
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       setComponentsLoaded(true);
       loader.stopLoading();
@@ -32,11 +30,11 @@ export default function Home() {
       {/* Spotify Loader */}
       <SpotifyLoader 
         isLoading={loader.isLoading}
-        message="Loading your Spotify experience..."
+        message="Curating your perfect playlist..."
         variant="default"
       />
 
-      {/* Main Content - Only show when loaded */}
+      {/* Main Content */}
       {componentsLoaded && (
         <div className="min-h-screen">
           <HeroSection />
