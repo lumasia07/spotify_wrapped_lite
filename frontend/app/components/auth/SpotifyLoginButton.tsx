@@ -14,32 +14,52 @@ const SpotifyLoginButton = ({ className = '' }: SpotifyLoginButtonProps) => {
     setIsLoading(true);
     
     try {
+      const isProduction = process.env.NODE_ENV === 'production';
+      const currentOrigin = window.location.origin;
+      
+      // Determine the required origin based on environment
+      const requiredOrigin = isProduction 
+        ? 'https://spotify-wrapped-lite.vercel.app' 
+        : 'http://127.0.0.1:3000';
+      
+      // Only redirect to correct domain in development
+      if (!isProduction && currentOrigin !== requiredOrigin) {
+        // Redirect to the correct domain first (development only)
+        window.location.href = requiredOrigin + window.location.pathname;
+        return;
+      }
+      
       // Generate state parameter and store it in both localStorage and sessionStorage
       const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       localStorage.setItem('spotify_auth_state', state);
       sessionStorage.setItem('spotify_auth_state', state);
       
-      // Get backend URL from environment
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      // Get Spotify client ID from environment
+      const clientId = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID;
       
-      // Request OAuth URL from backend
-      const response = await fetch(`${backendUrl}/api/auth/spotify/url`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ state }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get Spotify OAuth URL');
+      if (!clientId) {
+        throw new Error('Spotify client ID not configured');
       }
-
-      const data = await response.json();
+      
+      // Determine redirect URI based on environment
+      const redirectUri = isProduction
+        ? 'https://spotify-wrapped-lite.vercel.app/auth/callback'
+        : 'http://127.0.0.1:3000/auth/callback';
+      
+      const scopes = 'user-read-private user-read-email user-top-read user-read-recently-played playlist-read-private user-library-read user-read-playback-state user-read-currently-playing';
+      
+      // Build Spotify authorization URL
+      const params = new URLSearchParams({
+        client_id: clientId,
+        response_type: 'code',
+        redirect_uri: redirectUri,
+        scope: scopes,
+        state: state,
+        show_dialog: 'true'
+      });
       
       // Redirect to Spotify OAuth
-      window.location.href = data.url;
+      window.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
     } catch (error) {
       console.error('Failed to initiate Spotify login:', error);
       setIsLoading(false);
