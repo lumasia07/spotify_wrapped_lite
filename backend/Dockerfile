@@ -36,11 +36,17 @@ RUN mkdir -p /var/www/html/storage/logs \
     && mkdir -p /var/www/html/storage/framework/sessions \
     && mkdir -p /var/www/html/storage/framework/views \
     && mkdir -p /var/www/html/bootstrap/cache \
+    && mkdir -p /var/www/html/database \
+    && touch /var/www/html/database/database.sqlite \
     && chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
-    && chmod -R 755 /var/www/html/bootstrap/cache
+    && chmod -R 755 /var/www/html/bootstrap/cache \
+    && chmod 664 /var/www/html/database/database.sqlite
 
 RUN if [ -f .env ] && ! grep -q "APP_KEY=" .env; then php artisan key:generate; fi
+
+# Run migrations to set up the database
+RUN php artisan migrate --force
 
 # Use environment variable for port (Render provides this)
 ENV PORT=8000
