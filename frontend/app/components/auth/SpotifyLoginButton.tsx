@@ -14,41 +14,32 @@ const SpotifyLoginButton = ({ className = '' }: SpotifyLoginButtonProps) => {
     setIsLoading(true);
     
     try {
-      // Ensure we're on the correct domain for OAuth flow
-      const currentOrigin = window.location.origin;
-      const requiredOrigin = 'http://127.0.0.1:3000';
-      
-      if (currentOrigin !== requiredOrigin) {
-        // Redirect to the correct domain first
-        window.location.href = requiredOrigin + window.location.pathname;
-        return;
-      }
-      
       // Generate state parameter and store it in both localStorage and sessionStorage
       const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       localStorage.setItem('spotify_auth_state', state);
       sessionStorage.setItem('spotify_auth_state', state);
       
-      // Spotify OAuth parameters
-      const clientId = 'b6e0452e53ae4988b99494eca7ff51a1'; // Your Spotify client ID
+      // Get backend URL from environment
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
       
-      // Use the exact redirect URI that matches Spotify app configuration
-      const redirectUri = 'http://127.0.0.1:3000/auth/callback';
-      
-      const scopes = 'user-read-private user-read-email user-top-read user-read-recently-played playlist-read-private user-library-read user-read-playback-state user-read-currently-playing';
-      
-      // Build Spotify authorization URL
-      const params = new URLSearchParams({
-        client_id: clientId,
-        response_type: 'code',
-        redirect_uri: redirectUri,
-        scope: scopes,
-        state: state,
-        show_dialog: 'true'
+      // Request OAuth URL from backend
+      const response = await fetch(`${backendUrl}/api/auth/spotify/url`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ state }),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to get Spotify OAuth URL');
+      }
+
+      const data = await response.json();
       
       // Redirect to Spotify OAuth
-      window.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
+      window.location.href = data.url;
     } catch (error) {
       console.error('Failed to initiate Spotify login:', error);
       setIsLoading(false);
