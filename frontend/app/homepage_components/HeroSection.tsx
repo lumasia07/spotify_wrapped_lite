@@ -3,9 +3,13 @@
 import Image from 'next/image';
 import { useState } from 'react';
 import { Play, Music, Heart, TrendingUp, Users, Sparkles } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import SpotifyLoginButton from '../components/auth/SpotifyLoginButton';
+import UserProfile from '../components/auth/UserProfile';
 
 const HeroSection = () => {
   const [isHovered, setIsHovered] = useState(false);
+  const { isAuthenticated, user } = useAuth();
 
   return (
     <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-black to-green-800 overflow-hidden pt-6">
@@ -78,26 +82,69 @@ const HeroSection = () => {
           </div>
         </div>
 
-        {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12 sm:mb-16">
-          <button
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            className="group relative bg-green-500 hover:bg-green-600 text-black font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-green-500/25 w-full sm:w-auto"
-          >
-            <span className="relative z-10 flex items-center justify-center space-x-2">
-              <Play className="w-5 h-5" />
-              <span>Start Your Journey</span>
-            </span>
-            <div className={`absolute inset-0 bg-white rounded-full transition-opacity duration-300 ${isHovered ? 'opacity-20' : 'opacity-0'}`}></div>
-          </button>
-          
-          <button className="border-2 border-green-500 text-green-500 hover:bg-green-500 hover:text-black font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-full transition-all duration-300 transform hover:scale-105 w-full sm:w-auto">
-            <span className="flex items-center justify-center space-x-2">
-              <Sparkles className="w-5 h-5" />
-              <span>See Demo</span>
-            </span>
-          </button>
+        {/* Authentication Section */}
+        <div className="mb-12 sm:mb-16">
+          {isAuthenticated && user ? (
+            <div className="flex flex-col items-center space-y-6">
+              {/* Welcome Message */}
+              <div className="text-center px-4">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+                  Welcome back, {user.spotify_display_name || user.name}!
+                </h2>
+                <p className="text-gray-300 text-lg">
+                  Ready to explore your music journey?
+                </p>
+              </div>
+
+              {/* User Profile */}
+              <UserProfile />
+
+              {/* Dashboard CTA */}
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-md px-4">
+                <button
+                  onMouseEnter={() => setIsHovered(true)}
+                  onMouseLeave={() => setIsHovered(false)}
+                  className="group relative bg-gradient-to-r from-green-500 to-green-400 hover:from-green-400 hover:to-green-300 text-black font-semibold px-6 py-4 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] shadow-xl hover:shadow-green-500/25 w-full"
+                  onClick={() => window.location.href = '/dashboard'}
+                >
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    <Play className="w-5 h-5" />
+                    <span>View Dashboard</span>
+                  </span>
+                  <div className={`absolute inset-0 bg-white/20 rounded-2xl transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}></div>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center space-y-8 px-4">
+              {/* Call to Action */}
+              <div className="text-center">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+                  Ready to discover your music story?
+                </h2>
+                <p className="text-gray-300 text-lg max-w-lg mx-auto">
+                  Connect your Spotify account and uncover the patterns, favorites, and moments that define your musical journey.
+                </p>
+              </div>
+
+              {/* Login Component */}
+              <div className="w-full max-w-md">
+                <SpotifyLoginButton />
+              </div>
+
+              {/* Features Preview */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto mt-8">
+                <div className="text-center p-4 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10">
+                  <Music className="w-8 h-8 text-green-400 mx-auto mb-2" />
+                  <div className="text-white font-medium text-sm">Top Tracks & Artists</div>
+                </div>
+                <div className="text-center p-4 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10">
+                  <TrendingUp className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+                  <div className="text-white font-medium text-sm">Listening Insights</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Enhanced Stats Preview */}
