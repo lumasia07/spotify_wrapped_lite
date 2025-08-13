@@ -14,20 +14,9 @@ const SpotifyLoginButton = ({ className = '' }: SpotifyLoginButtonProps) => {
     setIsLoading(true);
     
     try {
-      const isProduction = process.env.NODE_ENV === 'production';
+      // Check if we're in production by looking at the hostname
       const currentOrigin = window.location.origin;
-      
-      // Determine the required origin based on environment
-      const requiredOrigin = isProduction 
-        ? 'https://spotify-wrapped-lite.vercel.app' 
-        : 'http://127.0.0.1:3000';
-      
-      // Only redirect to correct domain in development
-      if (!isProduction && currentOrigin !== requiredOrigin) {
-        // Redirect to the correct domain first (development only)
-        window.location.href = requiredOrigin + window.location.pathname;
-        return;
-      }
+      const isProduction = currentOrigin.includes('vercel.app') || currentOrigin.includes('spotify-wrapped-lite');
       
       // Generate state parameter and store it in both localStorage and sessionStorage
       const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -41,10 +30,10 @@ const SpotifyLoginButton = ({ className = '' }: SpotifyLoginButtonProps) => {
         throw new Error('Spotify client ID not configured');
       }
       
-      // Determine redirect URI based on environment
+      // Determine redirect URI based on current environment
       const redirectUri = isProduction
         ? 'https://spotify-wrapped-lite.vercel.app/auth/callback'
-        : 'http://127.0.0.1:3000/auth/callback';
+        : `${currentOrigin}/auth/callback`;
       
       const scopes = 'user-read-private user-read-email user-top-read user-read-recently-played playlist-read-private user-library-read user-read-playback-state user-read-currently-playing';
       
