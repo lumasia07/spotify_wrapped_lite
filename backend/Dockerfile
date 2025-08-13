@@ -42,6 +42,9 @@ RUN mkdir -p /var/www/html/storage/logs \
 
 RUN if [ -f .env ] && ! grep -q "APP_KEY=" .env; then php artisan key:generate; fi
 
-EXPOSE 8000
+# Use environment variable for port (Render provides this)
+ENV PORT=8000
+EXPOSE $PORT
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Use artisan serve for better compatibility with Render
+CMD php artisan serve --host=0.0.0.0 --port=$PORT
