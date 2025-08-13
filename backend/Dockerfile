@@ -43,14 +43,14 @@ RUN mkdir -p /var/www/html/storage/logs \
     && chmod -R 755 /var/www/html/bootstrap/cache \
     && chmod 664 /var/www/html/database/database.sqlite
 
-RUN if [ -f .env ] && ! grep -q "APP_KEY=" .env; then php artisan key:generate; fi
+COPY start.sh /var/www/html/start.sh
+RUN chmod +x /var/www/html/start.sh
 
-# Run migrations to set up the database
-RUN php artisan migrate --force
+RUN if [ -f .env ] && ! grep -q "APP_KEY=" .env; then php artisan key:generate; fi
 
 # Use environment variable for port (Render provides this)
 ENV PORT=8000
 EXPOSE $PORT
 
-# Use artisan serve for better compatibility with Render
-CMD php artisan serve --host=0.0.0.0 --port=$PORT
+# Use startup script to handle database setup and server start
+CMD ["/var/www/html/start.sh"]
