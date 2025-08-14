@@ -104,23 +104,40 @@ class SpotifyAuthController extends Controller
         $code = $request->get('code');
         $state = $request->get('state');
         
+        Log::info('Code exchange request received', [
+            'code_length' => strlen($code),
+            'code_preview' => substr($code, 0, 10) . '...',
+            'state' => $state,
+            'user_agent' => $request->header('User-Agent', 'Unknown'),
+            'ip' => $request->ip(),
+            'environment' => config('app.env')
+        ]);
+        
         // Note: State validation is handled by the frontend since it generated the state
         // This approach is suitable for API-only authentication flows
         
         try {
+            Log::info('Starting token exchange process');
+            
             // Exchange code for access token
             $tokenResponse = $this->getSpotifyAccessToken($code);
             
             if (!$tokenResponse) {
+                Log::error('Token exchange failed - no response from Spotify');
                 throw new \Exception('Failed to get access token');
             }
+            
+            Log::info('Token exchange successful, fetching user profile');
             
             // Get user profile from Spotify
             $spotifyUser = $this->getSpotifyUserProfile($tokenResponse['access_token']);
             
             if (!$spotifyUser) {
+                Log::error('User profile fetch failed after successful token exchange');
                 throw new \Exception('Failed to get user profile');
             }
+            
+            Log::info('User profile fetched successfully, creating/updating user');
             
             // Create or update user
             $user = $this->createOrUpdateUser($spotifyUser, $tokenResponse);
@@ -130,6 +147,11 @@ class SpotifyAuthController extends Controller
             
             // Create API token for frontend
             $token = $user->createToken('spotify-wrapped-lite')->plainTextToken;
+            
+            Log::info('Authentication completed successfully', [
+                'user_id' => $user->id,
+                'spotify_id' => $user->spotify_id
+            ]);
             
             return response()->json([
                 'success' => true,
@@ -149,7 +171,12 @@ class SpotifyAuthController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            Log::error('Spotify code exchange error: ' . $e->getMessage());
+            Log::error('Spotify code exchange error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'code_preview' => substr($code, 0, 10) . '...',
+                'user_agent' => $request->header('User-Agent', 'Unknown')
+            ]);
             return response()->json([
                 'error' => 'Authentication failed',
                 'message' => $e->getMessage()
@@ -247,16 +274,48 @@ class SpotifyAuthController extends Controller
      */
     private function getSpotifyAccessToken($code)
     {
-        $response = Http::asForm()->post('https://accounts.spotify.com/api/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => $this->getRedirectUri(),
-            'client_id' => config('services.spotify.client_id'),
-            'client_secret' => config('services.spotify.client_secret'),
+        // Debug logging for production troubleshooting
+        $clientId = config('services.spotify.client_id');
+        $clientSecret = config('services.spotify.client_secret');
+        $redirectUri = $this->getRedirectUri();
+        
+        Log::info('Spotify token exchange debug', [
+            'environment' => config('app.env'),
+            'client_id' => $clientId ? 'SET (' . substr($clientId, 0, 8) . '...)' : 'MISSING',
+            'client_secret_set' => !empty($clientSecret),
+            'client_secret_is_placeholder' => $clientSecret === 'your_production_spotify_client_secret',
+            'client_secret_length' => $clientSecret ? strlen($clientSecret) : 0,
+            'redirect_uri' => $redirectUri,
+            'code_length' => strlen($code),
+            'code_preview' => substr($code, 0, 10) . '...'
+        ]);
+        
+        $response = Http::asForm()
+            ->timeout(30) // 30 second timeout
+            ->retry(2, 1000) // Retry 2 times with 1 second delay
+            ->post('https://accounts.spotify.com/api/token', [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => $redirectUri,
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+            ]);
+        
+        Log::info('Spotify API response', [
+            'status' => $response->status(),
+            'successful' => $response->successful(),
+            'body_preview' => substr($response->body(), 0, 200),
+            'headers' => $response->headers()
         ]);
         
         if (!$response->successful()) {
-            Log::error('Spotify token exchange failed: ' . $response->body());
+            Log::error('Spotify token exchange failed', [
+                'status' => $response->status(),
+                'full_response' => $response->body(),
+                'client_id_preview' => $clientId ? substr($clientId, 0, 8) . '...' : 'MISSING',
+                'client_secret_check' => $clientSecret === 'your_production_spotify_client_secret' ? 'PLACEHOLDER_VALUE' : 'REAL_VALUE',
+                'redirect_uri' => $redirectUri
+            ]);
             return null;
         }
         
@@ -288,15 +347,48 @@ class SpotifyAuthController extends Controller
      */
     private function getSpotifyUserProfile($accessToken)
     {
+        Log::info('Fetching Spotify user profile', [
+            'access_token_length' => strlen($accessToken),
+            'access_token_preview' => substr($accessToken, 0, 20) . '...',
+            'user_agent' => request()->header('User-Agent', 'Unknown')
+        ]);
+        
         $response = Http::withToken($accessToken)
+            ->timeout(30) // 30 second timeout
+            ->retry(2, 1000) // Retry 2 times with 1 second delay
+            ->withHeaders([
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json'
+            ])
             ->get('https://api.spotify.com/v1/me');
         
+        Log::info('Spotify user profile response', [
+            'status' => $response->status(),
+            'successful' => $response->successful(),
+            'response_headers' => $response->headers(),
+            'response_body_preview' => substr($response->body(), 0, 500)
+        ]);
+        
         if (!$response->successful()) {
-            Log::error('Spotify user profile fetch failed: ' . $response->body());
+            Log::error('Spotify user profile fetch failed', [
+                'status' => $response->status(),
+                'response_body' => $response->body(),
+                'response_headers' => $response->headers(),
+                'access_token_preview' => substr($accessToken, 0, 20) . '...'
+            ]);
             return null;
         }
         
-        return $response->json();
+        $profileData = $response->json();
+        Log::info('Spotify user profile data', [
+            'user_id' => $profileData['id'] ?? 'MISSING',
+            'display_name' => $profileData['display_name'] ?? 'MISSING',
+            'email' => $profileData['email'] ?? 'MISSING',
+            'country' => $profileData['country'] ?? 'MISSING',
+            'product' => $profileData['product'] ?? 'MISSING'
+        ]);
+        
+        return $profileData;
     }
 
     /**
