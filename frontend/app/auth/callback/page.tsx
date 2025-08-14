@@ -52,29 +52,8 @@ const AuthCallbackContent = () => {
           // Store the token
           localStorage.setItem('auth_token', token);
           
-          // Get backend URL with fallback - be more flexible for different devices
-          const getBackendUrl = () => {
-            // If we have an explicit backend URL set, use it
-            if (process.env.NEXT_PUBLIC_BACKEND_URL) {
-              return process.env.NEXT_PUBLIC_BACKEND_URL;
-            }
-            
-            // In production, use the production backend
-            if (window.location.origin.includes('vercel.app')) {
-              return 'https://spotify-wrapped-lite.onrender.com';
-            }
-            
-            // For development, try to determine the backend URL
-            const hostname = window.location.hostname;
-            if (hostname === 'localhost' || hostname === '127.0.0.1') {
-              return 'http://127.0.0.1:8000';
-            } else {
-              // For other local network access, assume backend is on port 8000
-              return `http://${hostname}:8000`;
-            }
-          };
-          
-          const backendUrl = getBackendUrl();
+          // Get backend URL with fallback
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
           
           // Fetch user data
           const response = await fetch(`${backendUrl}/api/user`, {
@@ -128,29 +107,8 @@ const AuthCallbackContent = () => {
           
           setMessage('Exchanging authorization code...');
           
-          // Get backend URL with fallback - be more flexible for different devices
-          const getBackendUrl = () => {
-            // If we have an explicit backend URL set, use it
-            if (process.env.NEXT_PUBLIC_BACKEND_URL) {
-              return process.env.NEXT_PUBLIC_BACKEND_URL;
-            }
-            
-            // In production, use the production backend
-            if (window.location.origin.includes('vercel.app')) {
-              return 'https://spotify-wrapped-lite.onrender.com';
-            }
-            
-            // For development, try to determine the backend URL
-            const hostname = window.location.hostname;
-            if (hostname === 'localhost' || hostname === '127.0.0.1') {
-              return 'http://127.0.0.1:8000';
-            } else {
-              // For other local network access, assume backend is on port 8000
-              return `http://${hostname}:8000`;
-            }
-          };
-          
-          const backendUrl = getBackendUrl();
+          // Get backend URL with fallback
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
           
           // Exchange code for token
           const response = await fetch(`${backendUrl}/api/auth/spotify/exchange`, {
